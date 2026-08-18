@@ -12,7 +12,7 @@ body {
   background: linear-gradient(180deg, #f9fafb 0%, #eef2ff 100%);
 }
 
-button { font: inherit; }
+button, audio { font: inherit; }
 
 .app-shell {
   min-height: 100vh;
@@ -22,7 +22,7 @@ button { font: inherit; }
 }
 
 .card {
-  width: min(100%, 460px);
+  width: min(100%, 480px);
   background: white;
   border-radius: 24px;
   padding: 28px;
@@ -44,15 +44,20 @@ h1 {
   line-height: 1.05;
 }
 
+h2 {
+  margin: 0;
+  font-size: 1.05rem;
+}
+
 .intro {
   margin: 18px 0 0;
   color: #4b5563;
   line-height: 1.6;
 }
 
-.permission-panel {
-  margin-top: 28px;
-  padding: 20px;
+.panel, .section-block {
+  margin-top: 24px;
+  padding: 18px;
   border: 1px solid #e5e7eb;
   border-radius: 18px;
   background: #f9fafb;
@@ -83,28 +88,110 @@ h1 {
   box-shadow: 0 0 0 4px rgba(220, 38, 38, 0.15);
 }
 
-.primary-button {
-  width: 100%;
-  margin-top: 20px;
-  border: 0;
-  border-radius: 14px;
-  padding: 14px 18px;
-  font-weight: 800;
-  color: white;
-  background: #111827;
-  cursor: pointer;
+.status-dot.recording {
+  background: #dc2626;
+  box-shadow: 0 0 0 4px rgba(220, 38, 38, 0.15);
+  animation: pulse 1.2s infinite;
 }
 
-.primary-button:disabled {
-  opacity: 0.55;
-  cursor: wait;
+@keyframes pulse {
+  50% { transform: scale(1.25); }
 }
 
 .message {
   min-height: 24px;
-  margin: 14px 0 0;
+  margin: 12px 0 0;
   color: #4b5563;
   line-height: 1.5;
+}
+
+.controls {
+  display: grid;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.primary-button, .secondary-button {
+  width: 100%;
+  border-radius: 14px;
+  padding: 14px 18px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.primary-button {
+  border: 0;
+  color: white;
+  background: #111827;
+}
+
+.secondary-button {
+  border: 1px solid #d1d5db;
+  color: #111827;
+  background: white;
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+audio {
+  width: 100%;
+  margin-top: 14px;
+}
+
+.section-block .secondary-button {
+  margin-top: 14px;
+}
+
+.section-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.prototype-badge {
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: #ede9fe;
+  color: #5b21b6;
+  font-size: 0.75rem;
+  font-weight: 800;
+}
+
+.result-note {
+  margin: 10px 0 0;
+  color: #6b7280;
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+
+.chord-list {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.chord-card {
+  text-align: center;
+  padding: 12px 6px;
+  border-radius: 14px;
+  background: white;
+  border: 1px solid #e5e7eb;
+}
+
+.chord-card strong {
+  display: block;
+  margin-top: 4px;
+  font-size: 1.3rem;
+}
+
+.chord-time {
+  color: #9ca3af;
+  font-size: 0.72rem;
 }
 
 .privacy-note {
@@ -114,9 +201,15 @@ h1 {
   text-align: center;
 }
 
+[hidden] { display: none !important; }
+
 @media (max-width: 420px) {
   .card {
     padding: 22px;
     border-radius: 20px;
+  }
+
+  .chord-list {
+    grid-template-columns: repeat(2, 1fr);
   }
 }
