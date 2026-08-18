@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#111827" />
+  <title>ChordSnap</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <main class="app-shell">
+    <section class="card" aria-labelledby="app-title">
+      <p class="eyebrow">ChordSnap</p>
+      <h1 id="app-title">Musik hören. Akkorde finden.</h1>
+      <p class="intro">Für den ersten Test prüft die App nur, ob dein Mikrofon verwendet werden darf.</p>
+
+      <div class="permission-panel">
+        <div class="status-row">
+          <span id="status-dot" class="status-dot" aria-hidden="true"></span>
+          <span id="status-text">Mikrofon noch nicht freigegeben</span>
+        </div>
+
+        <button id="request-mic" class="primary-button" type="button">Mikrofon freigeben</button>
+        <p id="message" class="message" role="status" aria-live="polite"></p>
+      </div>
+
+      <p class="privacy-note">Die App speichert in diesem Schritt keine Audioaufnahme.</p>
+    </section>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>
