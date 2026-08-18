@@ -12,19 +12,37 @@
     <section class="card" aria-labelledby="app-title">
       <p class="eyebrow">ChordSnap</p>
       <h1 id="app-title">Musik hören. Akkorde finden.</h1>
-      <p class="intro">Für den ersten Test prüft die App nur, ob dein Mikrofon verwendet werden darf.</p>
+      <p class="intro">Nimm einen kurzen Songausschnitt auf, höre ihn direkt wieder an und teste anschließend den vorgesehenen Analysefluss.</p>
 
-      <div class="permission-panel">
+      <div class="panel">
         <div class="status-row">
           <span id="status-dot" class="status-dot" aria-hidden="true"></span>
-          <span id="status-text">Mikrofon noch nicht freigegeben</span>
+          <span id="status-text">Bereit für den Test</span>
         </div>
-
-        <button id="request-mic" class="primary-button" type="button">Mikrofon freigeben</button>
-        <p id="message" class="message" role="status" aria-live="polite"></p>
+        <p id="message" class="message" role="status" aria-live="polite">Tippe zuerst auf „Aufnahme starten“.</p>
       </div>
 
-      <p class="privacy-note">Die App speichert in diesem Schritt keine Audioaufnahme.</p>
+      <div class="controls">
+        <button id="record-button" class="primary-button" type="button">🎙️ Aufnahme starten</button>
+        <button id="stop-button" class="secondary-button" type="button" disabled>⏹ Aufnahme stoppen</button>
+      </div>
+
+      <section id="playback-section" class="section-block" hidden>
+        <h2>Deine Aufnahme</h2>
+        <audio id="audio-player" controls></audio>
+        <button id="analyze-button" class="secondary-button" type="button">✨ Analyse testen</button>
+      </section>
+
+      <section id="result-section" class="section-block" hidden>
+        <div class="section-heading">
+          <h2>Erkannte Akkorde</h2>
+          <span class="prototype-badge">Prototyp</span>
+        </div>
+        <p class="result-note">Die Ergebnisdarstellung ist bereits echt. Die musikalische Akkorderkennung folgt in einer eigenen Story.</p>
+        <div id="chord-list" class="chord-list" aria-label="Erkannte Akkorde"></div>
+      </section>
+
+      <p class="privacy-note">Die Aufnahme bleibt nur lokal in deinem Browser und wird nicht hochgeladen.</p>
     </section>
   </main>
 
