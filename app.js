@@ -13,6 +13,9 @@ let mediaRecorder;
 let mediaStream;
 let audioChunks = [];
 let currentAudioUrl;
+let currentAudioBlob;
+let essentia;
+let essentiaReady;
 
 function setState(type, status, detail) {
   statusDot.classList.remove('success', 'error', 'recording');
@@ -26,10 +29,24 @@ function resetPlayback() {
     URL.revokeObjectURL(currentAudioUrl);
     currentAudioUrl = null;
   }
+  currentAudioBlob = null;
   audioPlayer.removeAttribute('src');
   playbackSection.hidden = true;
   resultSection.hidden = true;
   chordList.innerHTML = '';
+}
+
+function loadEssentia() {
+  if (essentiaReady) return essentiaReady;
+  if (typeof EssentiaWASM !== 'function' || typeof Essentia === 'undefined') {
+    return Promise.reject(new Error('Essentia konnte nicht geladen werden.'));
+  }
+
+  essentiaReady = EssentiaWASM().then((wasmModule) => {
+    essentia = new Essentia(wasmModule);
+    return essentia;
+  });
+  return essentiaReady;
 }
 
 async function startRecording() {
@@ -54,11 +71,11 @@ async function startRecording() {
 
     mediaRecorder.addEventListener('stop', () => {
       const mimeType = mediaRecorder.mimeType || 'audio/webm';
-      const blob = new Blob(audioChunks, { type: mimeType });
-      currentAudioUrl = URL.createObjectURL(blob);
+      currentAudioBlob = new Blob(audioChunks, { type: mimeType });
+      currentAudioUrl = URL.createObjectURL(currentAudioBlob);
       audioPlayer.src = currentAudioUrl;
       playbackSection.hidden = false;
-      setState('success', 'Aufnahme fertig', 'Du kannst die Aufnahme jetzt anhören oder den Analyse-Prototyp testen.');
+      setState('success', 'Aufnahme fertig', 'Du kannst die Aufnahme jetzt anhören oder die Akkorde erkennen lassen.');
       recordButton.disabled = false;
       recordButton.textContent = '🎙️ Neue Aufnahme';
       stopButton.disabled = true;
@@ -91,27 +108,101 @@ function stopRecording() {
   mediaStream = null;
 }
 
-function showPrototypeAnalysis() {
-  if (!audioPlayer.src) {
+function collapseChordFrames(chords, strengths, hopSeconds) {
+  const result = [];
+  let previousChord = null;
+
+  for (let i = 0; i < chords.length; i += 1) {
+    const chord = String(chords[i] || '').trim();
+    const strength = Number(strengths?.[i] ?? 0);
+    if (!chord || chord === 'N') continue;
+
+    const normalizedChord = strength < 0.15 ? '?' : chord;
+    if (normalizedChord === previousChord) continue;
+
+    result.push({
+      chord: normalizedChord,
+      time: i * hopSeconds,
+      strength,
+    });
+    previousChord = normalizedChord;
+  }
+
+  return result;
+}
+
+function renderChordResults(results) {
+  chordList.innerHTML = '';
+
+  if (!results.length) {
+    setState('error', 'Keine verlässlichen Akkorde erkannt', 'Versuche eine klarere oder etwas lautere Aufnahme mit einfachen Akkordwechseln.');
+    resultSection.hidden = true;
+    return;
+  }
+
+  chordList.innerHTML = results.map((item) => {
+    const time = `${item.time.toFixed(1)}s`;
+    const label = item.chord === '?' ? 'unsicher' : item.chord;
+    return `<div class="chord-card"><span class="chord-time">${time}</span><strong>${label}</strong></div>`;
+  }).join('');
+
+  resultSection.hidden = false;
+  resultSection.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+async function analyzeRecording() {
+  if (!currentAudioBlob) {
     setState('error', 'Keine Aufnahme vorhanden', 'Nimm zuerst einen Songausschnitt auf.');
     return;
   }
 
   analyzeButton.disabled = true;
   analyzeButton.textContent = 'Analysiere …';
-  setState(null, 'Analyse läuft …', 'Für diesen Prototyp wird noch keine echte Musikerkennung ausgeführt.');
+  resultSection.hidden = true;
+  chordList.innerHTML = '';
+  setState(null, 'Analyse läuft …', 'ChordSnap berechnet die Tonhöhenklassen und sucht nach passenden Dur- und Moll-Akkorden.');
 
-  window.setTimeout(() => {
-    const demoChords = ['G', 'D', 'Em', 'C'];
-    chordList.innerHTML = demoChords.map((chord, index) => `<div class="chord-card"><span class="chord-time">${index * 2}s</span><strong>${chord}</strong></div>`).join('');
-    resultSection.hidden = false;
+  try {
+    await loadEssentia();
+
+    const arrayBuffer = await currentAudioBlob.arrayBuffer();
+    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    const audioBuffer = await audioContext.decodeAudioData(arrayBuffer.slice(0));
+    const mono = new Float32Array(audioBuffer.length);
+
+    for (let channel = 0; channel < audioBuffer.numberOfChannels; channel += 1) {
+      const data = audioBuffer.getChannelData(channel);
+      for (let i = 0; i < data.length; i += 1) {
+        mono[i] += data[i] / audioBuffer.numberOfChannels;
+      }
+    }
+
+    const signal = essentia.arrayToVector(mono);
+    const frameSize = 4096;
+    const hopSize = 2048;
+    const tonal = essentia.TonalExtractor(signal, frameSize, hopSize, 440);
+    const chords = tonal.chords_progression || [];
+    const strengths = tonal.chords_strength || [];
+    const hopSeconds = hopSize / audioBuffer.sampleRate;
+    const results = collapseChordFrames(chords, strengths, hopSeconds);
+
+    if (signal?.delete) signal.delete();
+    await audioContext.close();
+
+    renderChordResults(results);
+    if (results.length) {
+      setState('success', 'Akkorde erkannt', `${results.length} Akkordwechsel wurden gefunden. Unsichere Stellen werden als „unsicher“ markiert.`);
+    }
+  } catch (error) {
+    console.error(error);
+    setState('error', 'Analyse fehlgeschlagen', 'Die Aufnahme konnte nicht zuverlässig analysiert werden. Bitte versuche es erneut oder nutze einen anderen Browser.');
+    resultSection.hidden = true;
+  } finally {
     analyzeButton.disabled = false;
-    analyzeButton.textContent = '✨ Analyse erneut testen';
-    setState('success', 'Analyse-Ansicht bereit', 'Der komplette Nutzerfluss ist testbar. Die echte Akkorderkennung bauen wir als nächsten technischen Schritt.');
-    resultSection.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-  }, 700);
+    analyzeButton.textContent = '✨ Akkorde erneut erkennen';
+  }
 }
 
 recordButton.addEventListener('click', startRecording);
 stopButton.addEventListener('click', stopRecording);
-analyzeButton.addEventListener('click', showPrototypeAnalysis);
+analyzeButton.addEventListener('click', analyzeRecording);
