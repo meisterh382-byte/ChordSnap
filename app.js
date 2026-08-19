@@ -147,6 +147,7 @@ function collapseChordFrames(chords, strengths, hopSeconds) {
       chord: normalizedChord,
       time: i * hopSeconds,
       strength,
+      uncertain: normalizedChord === '?',
     });
     previousChord = normalizedChord;
   }
@@ -154,18 +155,84 @@ function collapseChordFrames(chords, strengths, hopSeconds) {
   return result;
 }
 
+function formatKeyAsChord(key, scale) {
+  const cleanKey = String(key || '').trim();
+  const cleanScale = String(scale || '').trim().toLowerCase();
+  if (!cleanKey) return '';
+  return cleanScale === 'minor' ? `${cleanKey}m` : cleanKey;
+}
+
+function detectWindowedChordCandidates(mono, sampleRate) {
+  const results = [];
+  const windowSeconds = 2;
+  const stepSeconds = 1;
+  const windowSamples = Math.max(4096, Math.round(windowSeconds * sampleRate));
+  const stepSamples = Math.max(2048, Math.round(stepSeconds * sampleRate));
+
+  for (let start = 0; start < mono.length; start += stepSamples) {
+    const end = Math.min(start + windowSamples, mono.length);
+    if (end - start < Math.min(4096, mono.length)) break;
+
+    const segment = mono.slice(start, end);
+    let segmentVector;
+
+    try {
+      segmentVector = essentia.arrayToVector(segment);
+      const estimate = essentia.KeyExtractor(
+        segmentVector,
+        true,
+        4096,
+        2048,
+        12,
+        3500,
+        60,
+        25,
+        0.2,
+        'tonictriad',
+        sampleRate,
+        0.0001,
+        440,
+        'cosine',
+        'hann'
+      );
+
+      const chord = formatKeyAsChord(estimate.key, estimate.scale);
+      const strength = Number(estimate.strength || 0);
+      if (!chord || !Number.isFinite(strength)) continue;
+
+      const previous = results[results.length - 1];
+      if (previous?.chord === chord) {
+        previous.strength = Math.max(previous.strength, strength);
+        previous.uncertain = previous.strength < 0.35;
+        continue;
+      }
+
+      results.push({
+        chord,
+        time: start / sampleRate,
+        strength,
+        uncertain: strength < 0.35,
+      });
+    } finally {
+      if (segmentVector?.delete) segmentVector.delete();
+    }
+  }
+
+  return results;
+}
+
 function renderChordResults(results) {
   chordList.innerHTML = '';
 
   if (!results.length) {
-    setState('error', 'Keine verlässlichen Akkorde erkannt', 'Versuche eine klarere oder etwas lautere Aufnahme mit einfachen Akkordwechseln.');
+    setState('error', 'Keine verlässlichen Akkorde erkannt', 'Versuche eine klarere oder etwas längere Aufnahme mit einfachen Akkordwechseln.');
     resultSection.hidden = true;
     return;
   }
 
   chordList.innerHTML = results.map((item) => {
     const time = `${item.time.toFixed(1)}s`;
-    const label = item.chord === '?' ? 'unsicher' : item.chord;
+    const label = item.chord === '?' ? 'unsicher' : item.uncertain ? `${item.chord} · unsicher` : item.chord;
     return `<div class="chord-card"><span class="chord-time">${time}</span><strong>${label}</strong></div>`;
   }).join('');
 
@@ -212,11 +279,20 @@ async function analyzeRecording() {
     const chords = embindVectorToArray(tonal.chords_progression);
     const strengths = floatVectorToArray(tonal.chords_strength);
     const hopSeconds = hopSize / audioBuffer.sampleRate;
-    const results = collapseChordFrames(chords, strengths, hopSeconds);
+    let results = collapseChordFrames(chords, strengths, hopSeconds);
+    let usedFallback = false;
+
+    if (!results.length) {
+      results = detectWindowedChordCandidates(mono, audioBuffer.sampleRate);
+      usedFallback = results.length > 0;
+    }
 
     renderChordResults(results);
     if (results.length) {
-      setState('success', 'Akkorde erkannt', `${results.length} Akkordwechsel wurden gefunden. Unsichere Stellen werden als „unsicher“ markiert.`);
+      const detail = usedFallback
+        ? `${results.length} Akkord-Kandidaten wurden in kurzen Zeitfenstern gefunden. Schwache Treffer sind als „unsicher“ markiert.`
+        : `${results.length} Akkordwechsel wurden gefunden. Unsichere Stellen werden als „unsicher“ markiert.`;
+      setState('success', 'Akkorde erkannt', detail);
     }
   } catch (error) {
     console.error(error);
