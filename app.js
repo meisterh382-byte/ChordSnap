@@ -49,6 +49,29 @@ function loadEssentia() {
   return essentiaReady;
 }
 
+function embindVectorToArray(vector) {
+  if (!vector) return [];
+  if (Array.isArray(vector)) return vector;
+  if (ArrayBuffer.isView(vector)) return Array.from(vector);
+  if (typeof vector.size === 'function' && typeof vector.get === 'function') {
+    const values = [];
+    for (let i = 0; i < vector.size(); i += 1) values.push(vector.get(i));
+    return values;
+  }
+  return [];
+}
+
+function floatVectorToArray(vector) {
+  if (!vector) return [];
+  if (Array.isArray(vector)) return vector;
+  if (ArrayBuffer.isView(vector)) return Array.from(vector);
+  try {
+    return Array.from(essentia.vectorToArray(vector));
+  } catch (error) {
+    return embindVectorToArray(vector).map(Number);
+  }
+}
+
 async function startRecording() {
   if (!navigator.mediaDevices?.getUserMedia || !window.MediaRecorder) {
     setState('error', 'Aufnahme nicht verfügbar', 'Dein Browser unterstützt die benötigte Audioaufnahme nicht. Bitte nutze einen aktuellen Browser über HTTPS.');
@@ -114,7 +137,7 @@ function collapseChordFrames(chords, strengths, hopSeconds) {
 
   for (let i = 0; i < chords.length; i += 1) {
     const chord = String(chords[i] || '').trim();
-    const strength = Number(strengths?.[i] ?? 0);
+    const strength = Number(strengths[i] ?? 0);
     if (!chord || chord === 'N') continue;
 
     const normalizedChord = strength < 0.15 ? '?' : chord;
@@ -162,11 +185,15 @@ async function analyzeRecording() {
   chordList.innerHTML = '';
   setState(null, 'Analyse läuft …', 'ChordSnap berechnet die Tonhöhenklassen und sucht nach passenden Dur- und Moll-Akkorden.');
 
+  let signal;
+  let audioContext;
+  let tonal;
+
   try {
     await loadEssentia();
 
     const arrayBuffer = await currentAudioBlob.arrayBuffer();
-    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    audioContext = new (window.AudioContext || window.webkitAudioContext)();
     const audioBuffer = await audioContext.decodeAudioData(arrayBuffer.slice(0));
     const mono = new Float32Array(audioBuffer.length);
 
@@ -177,17 +204,15 @@ async function analyzeRecording() {
       }
     }
 
-    const signal = essentia.arrayToVector(mono);
+    signal = essentia.arrayToVector(mono);
     const frameSize = 4096;
     const hopSize = 2048;
-    const tonal = essentia.TonalExtractor(signal, frameSize, hopSize, 440);
-    const chords = tonal.chords_progression || [];
-    const strengths = tonal.chords_strength || [];
+    tonal = essentia.TonalExtractor(signal, frameSize, hopSize, 440);
+
+    const chords = embindVectorToArray(tonal.chords_progression);
+    const strengths = floatVectorToArray(tonal.chords_strength);
     const hopSeconds = hopSize / audioBuffer.sampleRate;
     const results = collapseChordFrames(chords, strengths, hopSeconds);
-
-    if (signal?.delete) signal.delete();
-    await audioContext.close();
 
     renderChordResults(results);
     if (results.length) {
@@ -198,6 +223,13 @@ async function analyzeRecording() {
     setState('error', 'Analyse fehlgeschlagen', 'Die Aufnahme konnte nicht zuverlässig analysiert werden. Bitte versuche es erneut oder nutze einen anderen Browser.');
     resultSection.hidden = true;
   } finally {
+    if (signal?.delete) signal.delete();
+    if (tonal?.chords_progression?.delete) tonal.chords_progression.delete();
+    if (tonal?.chords_strength?.delete) tonal.chords_strength.delete();
+    if (tonal?.chords_histogram?.delete) tonal.chords_histogram.delete();
+    if (tonal?.hpcp?.delete) tonal.hpcp.delete();
+    if (tonal?.hpcp_highres?.delete) tonal.hpcp_highres.delete();
+    if (audioContext && audioContext.state !== 'closed') await audioContext.close();
     analyzeButton.disabled = false;
     analyzeButton.textContent = '✨ Akkorde erneut erkennen';
   }
