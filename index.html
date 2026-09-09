@@ -3,51 +3,71 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta name="theme-color" content="#111827" />
-  <title>ChordSnap</title>
-  <link rel="stylesheet" href="styles.css" />
-  <script src="https://cdn.jsdelivr.net/npm/essentia.js@0.1.3/dist/essentia-wasm.web.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/essentia.js@0.1.3/dist/essentia.js-core.js"></script>
+  <meta name="theme-color" content="#252344" />
+  <meta name="description" content="Finde einfache Gitarrenakkorde in deiner Aufnahme und übe sie mit passenden Griffen und Capo." />
+  <title>ChordSnap · Hör den Song. Spiel ihn selbst.</title>
+  <link rel="stylesheet" href="styles.css?v=2" />
+  <script defer src="https://cdn.jsdelivr.net/npm/essentia.js@0.1.3/dist/essentia-wasm.web.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/essentia.js@0.1.3/dist/essentia.js-core.js"></script>
+  <script defer src="music.js?v=2"></script>
+  <script defer src="analysis.js?v=2"></script>
+  <script defer src="storage.js?v=2"></script>
+  <script defer src="demo.js?v=2"></script>
+  <script defer src="app.js?v=2"></script>
 </head>
 <body>
+  <a class="skip-link" href="#recording">Zum Aufnehmen</a>
+  <header class="site-header">
+    <a class="brand" href="#"><span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i><i></i></span>ChordSnap<span class="beta">BETA</span></a>
+    <nav aria-label="Hauptnavigation"><a href="#collection">Meine Songs</a><a href="#grips">Meine Griffe</a></nav>
+  </header>
   <main class="app-shell">
-    <section class="card" aria-labelledby="app-title">
-      <p class="eyebrow">ChordSnap</p>
-      <h1 id="app-title">Musik hören. Akkorde finden.</h1>
-      <p class="intro">Nimm einen kurzen Songausschnitt auf, höre ihn direkt wieder an und lass anschließend einfache Dur- und Moll-Akkorde erkennen.</p>
-
-      <div class="panel">
-        <div class="status-row">
-          <span id="status-dot" class="status-dot" aria-hidden="true"></span>
-          <span id="status-text">Bereit für den Test</span>
-        </div>
-        <p id="message" class="message" role="status" aria-live="polite">Tippe zuerst auf „Aufnahme starten“.</p>
-      </div>
-
-      <div class="controls">
-        <button id="record-button" class="primary-button" type="button">🎙️ Aufnahme starten</button>
-        <button id="stop-button" class="secondary-button" type="button" disabled>⏹ Aufnahme stoppen</button>
-      </div>
-
-      <section id="playback-section" class="section-block" hidden>
-        <h2>Deine Aufnahme</h2>
-        <audio id="audio-player" controls></audio>
-        <button id="analyze-button" class="secondary-button" type="button">✨ Akkorde erkennen</button>
-      </section>
-
-      <section id="result-section" class="section-block" hidden>
-        <div class="section-heading">
-          <h2>Erkannte Akkorde</h2>
-          <span class="prototype-badge">MVP</span>
-        </div>
-        <p class="result-note">ChordSnap analysiert die Aufnahme lokal im Browser. Der MVP konzentriert sich auf häufige Dur- und Moll-Akkorde; komplexere Harmonien können noch ungenau sein.</p>
-        <div id="chord-list" class="chord-list" aria-label="Erkannte Akkorde"></div>
-      </section>
-
-      <p class="privacy-note">Die Aufnahme und Analyse bleiben lokal in deinem Browser und werden nicht hochgeladen.</p>
+    <section class="hero" aria-labelledby="app-title">
+      <p class="eyebrow">Dein Song. Deine Griffe.</p>
+      <h1 id="app-title">Hör den Song.<br><em>Spiel ihn selbst.</em></h1>
+      <p class="intro">Nimm einen Ausschnitt auf. Finde die Akkorde.<br class="desktop-break"> Und mach daraus deine nächste Übesession.</p>
     </section>
+    <div class="workspace">
+      <div class="main-column">
+        <section id="recording" class="card recording-card" aria-labelledby="record-title">
+          <div class="section-heading"><div><p class="eyebrow">01 · Zuhören</p><h2 id="record-title">Was möchtest du spielen?</h2></div><span class="pill">Lokal auf deinem Gerät</span></div>
+          <div class="record-display" id="record-display">
+            <span class="record-icon" aria-hidden="true">♪</span><span id="record-timer">00:00</span>
+            <span id="record-hint">10–30 Sekunden sind ein guter Anfang</span>
+            <meter id="input-level" min="0" max="1" value="0" aria-label="Mikrofonpegel" hidden></meter>
+          </div>
+          <div class="controls"><button id="record-button" class="primary-button" type="button">Aufnahme starten</button><button id="stop-button" class="secondary-button" type="button" disabled>Aufnahme stoppen</button></div>
+          <div class="alternate-inputs"><label class="text-button file-label">Audiodatei öffnen<input id="audio-file" type="file" accept="audio/*,.m4a,.wav,.mp3,.ogg,.webm" /></label><span aria-hidden="true">·</span><button id="demo-button" class="text-button" type="button">Testaufnahme laden</button></div>
+          <p class="small-note">Bis zu 60 Sekunden. Für den Anfang: klare Gitarrenakkorde, wenig Nebengeräusche.</p>
+          <div class="status-panel" role="status" aria-live="polite"><span id="status-dot" class="status-dot" aria-hidden="true"></span><div><strong id="status-text">Bereit, wenn du es bist.</strong><p id="message">Starte eine Aufnahme oder probiere die erzeugte Testfolge C–G–Am–F aus.</p></div></div>
+        </section>
+        <section id="playback-section" class="card" hidden aria-labelledby="playback-title">
+          <div class="section-heading"><div><p class="eyebrow">02 · Wiederhören</p><h2 id="playback-title">Deine Aufnahme</h2></div><span id="duration-label" class="pill"></span></div>
+          <audio id="audio-player" controls preload="metadata"></audio>
+          <button id="analyze-button" class="primary-button full-width" type="button">Akkorde erkennen</button>
+        </section>
+        <section id="result-section" class="card results-card" hidden aria-labelledby="result-title">
+          <div class="section-heading"><div><p class="eyebrow">03 · Mitspielen</p><h2 id="result-title">Mach den Song zu deinem.</h2></div><span id="confidence-label" class="pill"></span></div>
+          <p id="analysis-note" class="small-note"></p>
+          <fieldset class="capo-mode"><legend>Welche Griffe möchtest du sehen?</legend><label><input type="radio" name="capo-mode" value="original" checked> Ohne Capo</label><label><input type="radio" name="capo-mode" value="personal"> Passend für mich</label></fieldset>
+          <div class="capo-summary"><p id="capo-summary"></p><label class="capo-select-label">Capo<select id="capo-select" aria-label="Capo-Position"><option value="0">Ohne Capo</option><option value="1">1. Bund</option><option value="2">2. Bund</option><option value="3">3. Bund</option><option value="4">4. Bund</option><option value="5">5. Bund</option><option value="6">6. Bund</option><option value="7">7. Bund</option></select></label></div>
+          <div class="now-playing"><div><span class="overline">Jetzt spielen</span><strong id="current-chord">–</strong><span id="sounding-chord" class="sounding-chord"></span></div><div class="next-chord"><span class="overline">Als Nächstes</span><strong id="next-chord">–</strong><span id="next-time"></span></div></div>
+          <div class="practice-controls"><button id="play-button" class="primary-button" type="button">Mitspielen</button><label>Tempo<select id="playback-rate"><option value="0.75">75 %</option><option value="0.9">90 %</option><option value="1" selected>100 %</option></select></label></div>
+          <p class="small-note">Tippe auf einen Akkord, um zur Stelle zu springen und ihn zu prüfen. „?“ heißt: unklar. Zeiten sind Näherungen.</p>
+          <div id="chord-list" class="chord-list" aria-label="Akkordfolge"></div>
+          <details class="loop-panel"><summary>Schwierigen Wechsel als Schleife üben</summary><div class="loop-inputs"><label>Start (Sekunden)<input id="loop-start" type="number" min="0" step="0.1" value="0"></label><label>Ende (Sekunden)<input id="loop-end" type="number" min="0.3" step="0.1" value="2"></label></div><div class="button-row"><button id="loop-selection" class="secondary-button" type="button">Gewählten Wechsel nehmen</button><button id="loop-toggle" class="secondary-button" type="button" aria-pressed="false">Schleife einschalten</button></div><p id="loop-message" class="small-note" role="status">Wähle zwei aufeinanderfolgende Akkorde oder trage eigene Zeiten ein.</p></details>
+          <section id="editor" class="editor" hidden aria-labelledby="editor-title"><div class="section-heading"><h3 id="editor-title">Akkord prüfen</h3><button id="close-editor" class="text-button" type="button">Schließen</button></div><p id="editor-detail" class="small-note"></p><button id="listen-segment" class="secondary-button" type="button">Stelle anhören</button><div id="candidate-buttons" class="candidate-buttons"></div><p class="small-note">Hörvergleich: synthetische Dreiklänge in der Originaltonhöhe. Wähle unten den passenden Akkord.</p><div class="correction-row"><label>Klingender Akkord<select id="chord-correction"></select></label><button id="preview-correction" class="secondary-button" type="button">Vorspielen</button><button id="apply-correction" class="primary-button" type="button">Übernehmen</button></div><button id="reset-correction" class="text-button" type="button">Erkennung wiederherstellen</button></section>
+          <div class="save-panel"><label for="song-name">Für die nächste Übesession</label><div class="save-row"><input id="song-name" maxlength="80" placeholder="Name des Songs" /><button id="save-song" class="primary-button" type="button">Song speichern</button></div><p id="save-message" class="small-note" role="status">Speichert Aufnahme, Akkorde und Korrekturen auf diesem Gerät.</p></div>
+        </section>
+      </div>
+      <aside class="side-column">
+        <section id="grips" class="card grips-card" aria-labelledby="grips-title"><p class="eyebrow">Dein Werkzeugkasten</p><h2 id="grips-title">Diese Griffe kann ich.</h2><p class="small-note">Wähle deine vertrauten Dur- und Mollgriffe. ChordSnap sucht dazu einen passenden Capo von Bund 0 bis 7.</p><div id="known-grips" class="grip-grid"></div><details><summary>Weitere Griffe auswählen</summary><div id="more-grips" class="grip-grid"></div></details><p id="grips-message" class="small-note" role="status"></p><p class="notation-note">Internationale Namen: B = deutsches H, B♭ = deutsches B.</p></section>
+        <section class="card learning-card" aria-labelledby="learn-title"><span class="learning-icon" aria-hidden="true">↗</span><p class="eyebrow">Dein nächster Schritt</p><h2 id="learn-title">Ein Griff. Mehr Songs.</h2><p id="learning-text">Speichere deinen ersten Song. Hier siehst du dann, welcher neue Griff dir in deiner Sammlung am meisten hilft.</p><button id="learn-button" class="secondary-button" type="button" hidden>Diesen Griff kann ich jetzt</button></section>
+        <section class="card tip-card"><p class="eyebrow">Gut zu wissen</p><h2>Eine Hilfe fürs Ohr.</h2><p class="small-note">Die Erkennung schätzt einfache Dur- und Mollakkorde. Gesang, Schlagzeug, Arpeggios und komplexe Harmonien können sie verwirren. Prüfe unklare Stellen mit dem Hörvergleich.</p></section>
+      </aside>
+    </div>
+    <section id="collection" class="collection" aria-labelledby="collection-title"><div class="section-heading"><div><p class="eyebrow">Bereit für die nächste Runde</p><h2 id="collection-title">Meine Songs</h2></div><span id="song-count" class="pill">0 Songs</span></div><p class="small-note">Nur in diesem Browser gespeichert. Beim Löschen der Websitedaten geht die Sammlung verloren. Mit „Backup laden“ kannst du sie als Datei sichern.</p><p id="collection-message" role="status" class="small-note"></p><div id="song-list" class="song-list"></div><label class="text-button file-label">Song-Backup öffnen<input id="backup-file" type="file" accept=".json,application/json"></label></section>
+    <footer><span>ChordSnap <span id="app-version">2.0 · Übemodus</span></span><p>Dein Mikrofon. Dein Gerät. Deine Musik.<br>Aufnahmen und Analyse werden nicht hochgeladen.</p></footer>
   </main>
-
-  <script src="app.js"></script>
 </body>
 </html>
